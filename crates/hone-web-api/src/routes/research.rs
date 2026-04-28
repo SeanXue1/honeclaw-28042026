@@ -4,6 +4,7 @@ use axum::Json;
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
 use axum::response::IntoResponse;
+use reqwest::Method;
 use serde::Deserialize;
 use serde_json::json;
 use tracing::info;
@@ -38,19 +39,29 @@ pub(crate) async fn handle_research_start(
     State(state): State<Arc<AppState>>,
     Json(req): Json<ResearchStartRequest>,
 ) -> impl IntoResponse {
-    let url = match build_research_url(
+    let primary_url = match build_research_url(
         &state.core.config.web.research_api_base,
         "api/pdf/deep-research/start",
     ) {
         Ok(url) => url,
         Err(err) => return json_error(StatusCode::BAD_GATEWAY, err),
     };
-    let resp = match state
-        .http_client
-        .post(url)
-        .json(&json!({ "company_name": req.company_name }))
-        .send()
-        .await
+    let fallback_url = match build_research_url(
+        &state.core.config.web.research_api_base,
+        "api/research/start",
+    ) {
+        Ok(url) => Some(url),
+        Err(_) => None,
+    };
+    let body = json!({ "company_name": req.company_name });
+    let resp = match send_research_request(
+        &state.http_client,
+        Method::POST,
+        primary_url,
+        fallback_url,
+        Some(body),
+    )
+    .await
     {
         Ok(resp) => resp,
         Err(e) => {
@@ -73,7 +84,7 @@ pub(crate) async fn handle_research_status(
     State(state): State<Arc<AppState>>,
     Path(task_id): Path<String>,
 ) -> impl IntoResponse {
-    let url = match build_research_url(
+    let primary_url = match build_research_url(
         &state.core.config.web.research_api_base,
         &format!(
             "api/pdf/deep-research/status/{}",
@@ -83,7 +94,22 @@ pub(crate) async fn handle_research_status(
         Ok(url) => url,
         Err(err) => return json_error(StatusCode::BAD_GATEWAY, err),
     };
-    let resp = match state.http_client.get(url).send().await {
+    let fallback_url = match build_research_url(
+        &state.core.config.web.research_api_base,
+        &format!("api/research/status/{}", encode_path_segment(&task_id)),
+    ) {
+        Ok(url) => Some(url),
+        Err(_) => None,
+    };
+    let resp = match send_research_request(
+        &state.http_client,
+        Method::GET,
+        primary_url,
+        fallback_url,
+        None,
+    )
+    .await
+    {
         Ok(resp) => resp,
         Err(e) => {
             return (
@@ -189,6 +215,48 @@ fn build_research_url(raw_base: &str, relative_path: &str) -> Result<Url, String
     }
     base.join(normalized_path)
         .map_err(|err| format!("research_api_base 拼接失败: {err}"))
+}
+
+async fn send_research_request(
+    client: &reqwest::Client,
+    method: Method,
+    primary_url: Url,
+    fallback_url: Option<Url>,
+    body: Option<serde_json::Value>,
+) -> Result<reqwest::Response, reqwest::Error> {
+    let primary = build_research_request(client, method.clone(), primary_url, body.clone())
+        .send()
+        .await?;
+
+    if primary.status() != StatusCode::NOT_FOUND {
+        return Ok(primary);
+    }
+
+    let Some(fallback_url) = fallback_url else {
+        return Ok(primary);
+    };
+
+    tracing::info!(
+        "[research proxy] primary endpoint returned 404, retrying fallback endpoint={}",
+        fallback_url
+    );
+
+    build_research_request(client, method, fallback_url, body)
+        .send()
+        .await
+}
+
+fn build_research_request(
+    client: &reqwest::Client,
+    method: Method,
+    url: Url,
+    body: Option<serde_json::Value>,
+) -> reqwest::RequestBuilder {
+    let request = client.request(method, url);
+    match body {
+        Some(payload) => request.json(&payload),
+        None => request,
+    }
 }
 
 fn validate_research_base_url(raw_base: &str) -> Result<Url, String> {

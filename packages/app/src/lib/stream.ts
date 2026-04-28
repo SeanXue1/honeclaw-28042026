@@ -1,7 +1,8 @@
 import type { ChatStreamEvent } from "./types"
 
 export function parseSseChunks(buffer: string) {
-  const parts = buffer.split("\n\n")
+  const normalized = buffer.replace(/\r\n/g, "\n")
+  const parts = normalized.split("\n\n")
   const pending = parts.pop() ?? ""
   const events = parts.flatMap((part) => {
     let event = ""

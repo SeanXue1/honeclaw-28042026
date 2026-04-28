@@ -433,6 +433,10 @@ function createSessionsState() {
       }
 
       // iMessage：根据最后一条消息推断 pending 状态
+      if (lastNew?.kind === "assistant" && isPendingPhaseActive(state.pendingByKey[key]?.phase)) {
+        clearPending(key);
+      }
+
       if (updatePendingState && !state.pendingByKey[key]) {
         const last = newTimeline[newTimeline.length - 1];
         if (last?.kind === "user") {

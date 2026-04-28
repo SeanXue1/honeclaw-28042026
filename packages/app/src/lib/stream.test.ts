@@ -26,4 +26,14 @@ describe("parseSseChunks", () => {
     expect(parsed.events[0]?.event).toBe("error")
     expect(parsed.events[1]?.event).toBe("done")
   })
+
+  it("parses CRLF-delimited SSE events", () => {
+    const input =
+      'event: run_started\r\ndata: {"text":"ok"}\r\n\r\nevent: run_finished\r\ndata: {"success":true}\r\n\r\n'
+    const parsed = parseSseChunks(input)
+    expect(parsed.events).toHaveLength(2)
+    expect(parsed.events[0]?.event).toBe("run_started")
+    expect(parsed.events[1]?.event).toBe("run_finished")
+    expect(parsed.pending).toBe("")
+  })
 })
