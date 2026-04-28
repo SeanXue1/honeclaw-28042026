@@ -6,6 +6,12 @@ pub struct LlmConfig {
     #[serde(default = "default_provider")]
     pub provider: String,
     #[serde(default)]
+    pub api_key: String,
+    #[serde(default = "default_api_base")]
+    pub api_base: String,
+    #[serde(default)]
+    pub model: String,
+    #[serde(default)]
     pub openrouter: OpenRouterConfig,
     #[serde(default)]
     pub auxiliary: AuxiliaryLlmConfig,
@@ -17,6 +23,9 @@ impl Default for LlmConfig {
     fn default() -> Self {
         Self {
             provider: default_provider(),
+            api_key: String::new(),
+            api_base: default_api_base(),
+            model: String::new(),
             openrouter: OpenRouterConfig::default(),
             auxiliary: AuxiliaryLlmConfig::default(),
             kimi: KimiConfig::default(),
@@ -26,6 +35,10 @@ impl Default for LlmConfig {
 
 fn default_provider() -> String {
     "openrouter".to_string()
+}
+
+fn default_api_base() -> String {
+    String::new()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

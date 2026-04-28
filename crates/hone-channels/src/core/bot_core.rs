@@ -104,9 +104,35 @@ impl HoneBotCore {
 
     /// 创建 LLM Provider
     fn create_llm_provider(config: &HoneConfig) -> Option<Arc<dyn LlmProvider>> {
-        match config.llm.provider.as_str() {
+        match config.llm.provider.trim() {
+            "openai" | "openai-compatible" => {
+                let api_key = config.llm.api_key.trim();
+                let api_base = config.llm.api_base.trim();
+                let model = config.llm.model.trim();
+                if api_base.is_empty() || model.is_empty() {
+                    tracing::warn!(
+                        "Failed to create OpenAI-compatible provider: llm.api_base or llm.model is empty"
+                    );
+                    return None;
+                }
+                match OpenAiCompatibleProvider::new(
+                    api_key,
+                    api_base,
+                    model,
+                    config.llm.openrouter.timeout,
+                    config.llm.openrouter.max_tokens as u16,
+                ) {
+                    Ok(provider) => Some(Arc::new(provider)),
+                    Err(err) => {
+                        tracing::warn!(
+                            "Failed to create OpenAI-compatible provider: {}",
+                            err
+                        );
+                        None
+                    }
+                }
+            }
             _ => {
-                // Default to OpenRouter
                 match OpenRouterProvider::from_config(config) {
                     Ok(provider) => Some(Arc::new(provider)),
                     Err(e) => {

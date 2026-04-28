@@ -205,3 +205,22 @@ fn multi_agent_answer_zero_tool_limit_is_preserved() {
 
     assert_eq!(core.effective_multi_agent_answer_max_tool_calls(), 0);
 }
+
+#[test]
+fn primary_openai_compatible_provider_is_built_for_function_calling() {
+    let mut config = HoneConfig::default();
+    config.agent.runner = "function_calling".to_string();
+    config.llm.provider = "openai".to_string();
+    config.llm.api_key = "none".to_string();
+    config.llm.api_base = "http://127.0.0.1:11434/v1".to_string();
+    config.llm.model = "qwen2.5:7b".to_string();
+    config.llm.openrouter.api_key = String::new();
+
+    let core = HoneBotCore::new(config);
+
+    assert!(core.llm.is_some());
+    let runner = core
+        .create_runner("system", hone_tools::ToolRegistry::new())
+        .expect("function_calling runner should be created");
+    assert_eq!(runner.name(), "function_calling");
+}

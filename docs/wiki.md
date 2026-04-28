@@ -288,6 +288,11 @@ Never commit local secrets in `config.yaml`.
 
 Hone can use local CLI/ACP runners or OpenAI-compatible cloud APIs.
 
+For the built-in `function_calling` runner, the primary OpenAI-compatible route
+comes from `llm.provider=openai` (or `openai-compatible`) together with
+`llm.api_base`, `llm.api_key`, and `llm.model`. This is the path to use for
+local Ollama-style endpoints.
+
 Common runner choices:
 
 | Runner | Use When |

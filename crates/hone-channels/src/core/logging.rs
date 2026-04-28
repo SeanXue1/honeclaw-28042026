@@ -29,6 +29,11 @@ impl HoneBotCore {
     pub fn log_startup_routing(&self, channel: &str, config_path: &str) {
         let llm_provider = self.config.llm.provider.trim();
         let (llm_model, llm_timeout, llm_max_tokens) = match llm_provider {
+            "openai" | "openai-compatible" => (
+                printable_or_default(&self.config.llm.model, "<empty>"),
+                self.config.llm.openrouter.timeout,
+                self.config.llm.openrouter.max_tokens,
+            ),
             "kimi" => (
                 printable_or_default(&self.config.llm.kimi.model, "<empty>"),
                 self.config.llm.kimi.timeout,
@@ -42,6 +47,7 @@ impl HoneBotCore {
         };
 
         let llm_api_key_source = if match llm_provider {
+            "openai" | "openai-compatible" => !self.config.llm.api_key.trim().is_empty(),
             "kimi" => !self.config.llm.kimi.api_key.trim().is_empty(),
             _ => !self.config.llm.openrouter.api_key.trim().is_empty(),
         } {

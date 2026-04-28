@@ -37,6 +37,22 @@ llm:
 }
 
 #[test]
+fn test_deserialize_primary_openai_compatible_yaml() {
+    let yaml = r#"
+llm:
+  provider: openai
+  api_key: "none"
+  api_base: "http://127.0.0.1:11434/v1"
+  model: "qwen2.5:7b"
+"#;
+    let config: HoneConfig = serde_yaml::from_str(yaml).unwrap();
+    assert_eq!(config.llm.provider, "openai");
+    assert_eq!(config.llm.api_key, "none");
+    assert_eq!(config.llm.api_base, "http://127.0.0.1:11434/v1");
+    assert_eq!(config.llm.model, "qwen2.5:7b");
+}
+
+#[test]
 fn test_runtime_overlay_path() {
     let path = Path::new("/tmp/config.yaml");
     let overlay = runtime_overlay_path(path);
