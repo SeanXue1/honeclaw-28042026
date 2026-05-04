@@ -57,7 +57,7 @@ impl EarningsSurprisePoller {
         let mut out = Vec::new();
         let cutoff = Utc::now() - chrono::Duration::days(self.lookback_days);
         for t in tickers {
-            let path = format!("/v3/earnings-surprises/{t}");
+            let path = format!("/stable/earnings-surprises/{t}");
             match self.client.get_json(&path).await {
                 Ok(v) => out.extend(events_from_surprises(
                     &v,

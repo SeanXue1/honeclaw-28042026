@@ -88,7 +88,7 @@ impl EventSource for MacroPoller {
         let today = Utc::now().date_naive();
         let to = today + chrono::Duration::days(self.window_days);
         let path = format!(
-            "/v3/economic_calendar?from={}&to={}",
+            "/stable/economic_calendar?from={}&to={}",
             today.format("%Y-%m-%d"),
             to.format("%Y-%m-%d")
         );

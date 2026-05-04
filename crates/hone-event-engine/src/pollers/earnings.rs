@@ -52,7 +52,7 @@ impl EventSource for EarningsPoller {
         let today = Utc::now().date_naive();
         let to = today + ChronoDuration::days(self.window_days);
         let path = format!(
-            "/v3/earning_calendar?from={}&to={}",
+            "/stable/earning_calendar?from={}&to={}",
             today.format("%Y-%m-%d"),
             to.format("%Y-%m-%d")
         );

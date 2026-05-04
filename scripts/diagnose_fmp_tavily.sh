@@ -180,7 +180,7 @@ def http_json_request(method: str, url: str, timeout: float, body=None, headers=
 
 
 def probe_fmp(base_url: str, key: str, symbol: str, timeout: float):
-    endpoint = f"{base_url.rstrip('/')}/v3/quote/{urllib.parse.quote(symbol)}"
+    endpoint = f"{base_url.rstrip('/')}/stable/quote/{urllib.parse.quote(symbol)}"
     connector = "&" if "?" in endpoint else "?"
     url = f"{endpoint}{connector}apikey={urllib.parse.quote(key)}"
 

@@ -65,7 +65,7 @@ impl PricePoller {
             return Ok(vec![]);
         }
         let joined = symbols.join(",");
-        let path = format!("/v3/quote/{joined}");
+        let path = format!("/stable/quote/{joined}");
         let raw = self.client.get_json(&path).await?;
         Ok(events_from_quotes_at(
             &raw,

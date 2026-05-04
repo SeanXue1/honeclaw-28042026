@@ -267,7 +267,7 @@ impl EventSource for NewsPoller {
     }
 
     async fn poll(&self) -> anyhow::Result<Vec<MarketEvent>> {
-        let mut path = format!("/v3/stock_news?limit={}", self.page_limit);
+        let mut path = format!("/stable/stock_news?limit={}", self.page_limit);
         if let Some(ts) = &self.tickers {
             path.push_str("&tickers=");
             path.push_str(&ts.join(","));

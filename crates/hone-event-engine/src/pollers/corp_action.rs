@@ -66,14 +66,14 @@ impl EventSource for CorpActionCalendarPoller {
         let mut out = Vec::new();
 
         // Splits
-        let splits_path = format!("/v3/stock_split_calendar?from={from_str}&to={to_str}");
+        let splits_path = format!("/stable/stock_split_calendar?from={from_str}&to={to_str}");
         match self.client.get_json(&splits_path).await {
             Ok(v) => out.extend(events_from_splits(&v)),
             Err(e) => warn!("split calendar fetch failed: {e:#}"),
         }
 
         // Dividends
-        let div_path = format!("/v3/stock_dividend_calendar?from={from_str}&to={to_str}");
+        let div_path = format!("/stable/stock_dividend_calendar?from={from_str}&to={to_str}");
         match self.client.get_json(&div_path).await {
             Ok(v) => out.extend(events_from_dividends(&v)),
             Err(e) => warn!("dividend calendar fetch failed: {e:#}"),
@@ -116,7 +116,7 @@ impl SecFilingsPoller {
     /// 拉取某 ticker 的最近 SEC 8-K。`EventSource::poll` 会从 registry 取
     /// watch_pool 后逐个调本函数;测试可以直接传任意 ticker 调它。
     pub async fn fetch(&self, ticker: &str) -> anyhow::Result<Vec<MarketEvent>> {
-        let path = format!("/v3/sec_filings/{ticker}?type=8-K&page=0");
+        let path = format!("/stable/sec_filings/{ticker}?type=8-K&page=0");
         let raw = self.client.get_json(&path).await?;
         let cutoff = Utc::now() - chrono::Duration::hours(self.sec_recent_hours);
         Ok(events_from_sec_filings(&raw, ticker)

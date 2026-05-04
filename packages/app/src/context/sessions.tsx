@@ -28,6 +28,7 @@ const HISTORY_POLL_INTERVAL_MS = 5000;
 const USERS_POLL_INTERVAL_MS = 5000;
 /** 请求超时时间（毫秒） */
 const REQUEST_TIMEOUT_MS = 120_000;
+const PENDING_HISTORY_RECOVERY_MS = 15_000;
 
 /**
  * 默认对话用户：ME
@@ -188,7 +189,118 @@ function createSessionsState() {
 
       outer: while (true) {
         const chunk = await reader.read();
-        if (chunk.done) break;
+        if (chunk.done) {
+          pending += decoder.decode();
+          const tail = pending.trim();
+          if (tail) {
+            const parsed = parseSseChunks(`${pending}\n\n`);
+            pending = parsed.pending;
+            for (const event of parsed.events) {
+              if (event.event === "run_started") {
+                const text = event.data.text;
+                updatePending(key, {
+                  phase: "thinking",
+                  statusText: text || "姝ｅ湪鎬濊€冣€?",
+                });
+                continue;
+              }
+
+              if (event.event === "tool_call") {
+                const tool = event.data.tool;
+                const display = event.data.text?.trim() || event.data.reasoning?.trim();
+                updatePending(key, {
+                  phase: "running",
+                  statusText: display || (tool ? `璋冪敤宸ュ叿锛?${tool}` : "澶勭悊涓€?"),
+                });
+                continue;
+              }
+
+              if (event.event === "assistant_delta") {
+                const content = event.data.content ?? "";
+                const currentPending = state.pendingByKey[key];
+                if (currentPending) {
+                  updatePending(key, {
+                    phase: "streaming",
+                    statusText: "杈撳嚭涓€?",
+                    partialContent: (currentPending.partialContent ?? "") + content,
+                  });
+                }
+                continue;
+              }
+
+              if (event.event === "error") {
+                const msg = event.data.text?.trim() || "璇锋眰澶辫触";
+                updatePending(key, {
+                  phase: "error",
+                  statusText: msg,
+                });
+                continue;
+              }
+
+              if (event.event === "run_error") {
+                updatePending(key, {
+                  phase: "error",
+                  statusText: event.data.message ?? "鍙戠敓鏈煡閿欒",
+                });
+                continue;
+              }
+
+              if (event.event === "run_finished") {
+                if (timeoutHandleRef.current) clearTimeout(timeoutHandleRef.current);
+                const currentPending = state.pendingByKey[key];
+                if (currentPending?.phase === "error") {
+                  break outer;
+                }
+                if (!currentPending) {
+                  break outer;
+                }
+                clearPending(key);
+                if (currentPending.partialContent) {
+                  append(key, {
+                    id: currentPending.id,
+                    kind: "assistant",
+                    content: currentPending.partialContent,
+                  });
+                } else if (event.data.success === false) {
+                  setPending(key, {
+                    id: currentPending.id,
+                    startedAt: currentPending.startedAt,
+                    phase: "error",
+                    statusText: "澶勭悊澶辫触锛岃閲嶈瘯",
+                    partialContent: "",
+                  });
+                }
+                break outer;
+              }
+
+              if (event.event === "done") {
+                if (timeoutHandleRef.current) clearTimeout(timeoutHandleRef.current);
+                const cur = state.pendingByKey[key];
+                if (
+                  cur &&
+                  cur.phase !== "error" &&
+                  cur.phase !== "timeout"
+                ) {
+                  if (cur.partialContent) {
+                    append(key, {
+                      id: cur.id,
+                      kind: "assistant",
+                      content: cur.partialContent,
+                    });
+                    clearPending(key);
+                  } else {
+                    updatePending(key, {
+                      phase: "error",
+                      statusText: "杩炴帴宸叉柇寮€锛岃閲嶈瘯",
+                    });
+                  }
+                }
+                break outer;
+              }
+            }
+          }
+          break;
+        }
         pending += decoder.decode(chunk.value, { stream: true });
         const parsed = parseSseChunks(pending);
         pending = parsed.pending;
@@ -391,7 +503,13 @@ function createSessionsState() {
     // 防止对同一 key 的并发刷新（否则两次刷新会各自计算增量并重复追加相同消息）
     if (refreshingKeys.has(key)) return;
     // 若当前会话正在流式请求中，不干扰（除非强制刷新）；error/timeout 允许刷新
-    if (!force && isPendingPhaseActive(state.pendingByKey[key]?.phase)) return;
+    if (!force) {
+      const pendingState = state.pendingByKey[key];
+      if (pendingState && isPendingPhaseActive(pendingState.phase)) {
+        const ageMs = Date.now() - pendingState.startedAt;
+        if (ageMs < PENDING_HISTORY_RECOVERY_MS) return;
+      }
+    }
     refreshingKeys.add(key);
     const user = findUser(key);
     if (!user) {

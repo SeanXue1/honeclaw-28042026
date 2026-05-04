@@ -86,30 +86,30 @@ impl DataFetchTool {
 
     fn build_url(&self, data_type: &str, ticker: &str) -> Result<String, String> {
         match data_type {
-            "quote" => Ok(format!("{}/v3/quote/{}", self.base_url, ticker)),
-            "profile" => Ok(format!("{}/v3/profile/{}", self.base_url, ticker)),
+            "quote" => Ok(format!("{}/stable/quote/{}", self.base_url, ticker)),
+            "profile" => Ok(format!("{}/stable/profile/{}", self.base_url, ticker)),
             "search" => Ok(format!(
-                "{}/v3/search?query={}&limit=10",
+                "{}/stable/search?query={}&limit=10",
                 self.base_url, ticker
             )),
             "financials" => Ok(format!(
-                "{}/v3/income-statement/{}?limit=4",
+                "{}/stable/income-statement/{}?limit=4",
                 self.base_url, ticker
             )),
             "news" => {
                 if ticker.is_empty() {
-                    Ok(format!("{}/v3/stock_news?limit=10", self.base_url))
+                    Ok(format!("{}/stable/stock_news?limit=10", self.base_url))
                 } else {
                     Ok(format!(
-                        "{}/v3/stock_news?tickers={}&limit=10",
+                        "{}/stable/stock_news?tickers={}&limit=10",
                         self.base_url, ticker
                     ))
                 }
             }
-            "gainers_losers" => Ok(format!("{}/v3/stock_market/actives", self.base_url)),
-            "sector_performance" => Ok(format!("{}/v3/sector-performance", self.base_url)),
-            "crypto_quote" => Ok(format!("{}/v3/quote/{}", self.base_url, ticker)),
-            "etf_holdings" => Ok(format!("{}/v3/etf-holder/{}", self.base_url, ticker)),
+            "gainers_losers" => Ok(format!("{}/stable/stock_market/actives", self.base_url)),
+            "sector_performance" => Ok(format!("{}/stable/sector-performance", self.base_url)),
+            "crypto_quote" => Ok(format!("{}/stable/quote/{}", self.base_url, ticker)),
+            "etf_holdings" => Ok(format!("{}/stable/etf-holder/{}", self.base_url, ticker)),
             "earnings_calendar" => Err(
                 "earnings_calendar 需要显式窗口，通过 build_earnings_calendar_url 构造".to_string(),
             ),
@@ -146,7 +146,7 @@ impl DataFetchTool {
 
     fn build_earnings_calendar_url(&self, from: NaiveDate, to: NaiveDate) -> String {
         format!(
-            "{}/v3/earning_calendar?from={}&to={}",
+            "{}/stable/earning_calendar?from={}&to={}",
             self.base_url,
             from.format("%Y-%m-%d"),
             to.format("%Y-%m-%d")
@@ -389,7 +389,7 @@ mod tests {
         let full_url1 = format!("{}?apikey=test_key", url1);
         assert_eq!(
             full_url1,
-            "https://example.com/api/v3/quote/AAPL?apikey=test_key"
+            "https://example.com/api/stable/quote/AAPL?apikey=test_key"
         );
 
         let url2 = tool
@@ -398,7 +398,7 @@ mod tests {
         let full_url2 = format!("{}&apikey=test_key", url2);
         assert_eq!(
             full_url2,
-            "https://example.com/api/v3/income-statement/AAPL?limit=4&apikey=test_key"
+            "https://example.com/api/stable/income-statement/AAPL?limit=4&apikey=test_key"
         );
     }
 
@@ -483,7 +483,7 @@ mod tests {
         let url = tool.build_earnings_calendar_url(from, to);
         assert_eq!(
             url,
-            "https://example.com/api/v3/earning_calendar?from=2026-04-09&to=2026-04-23"
+            "https://example.com/api/stable/earning_calendar?from=2026-04-09&to=2026-04-23"
         );
     }
 }

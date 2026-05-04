@@ -40,7 +40,7 @@ impl FmpClient {
         !self.keys.is_empty()
     }
 
-    /// `path_with_query` 形如 `"/v3/earning_calendar?from=2026-04-21&to=2026-05-05"`
+    /// `path_with_query` 形如 `"/stable/earning_calendar?from=2026-04-21&to=2026-05-05"`
     /// （以 `/` 开头）。函数拼接 base_url + apikey 后 GET。
     pub async fn get_json(&self, path_with_query: &str) -> anyhow::Result<Value> {
         if self.keys.is_empty() {
