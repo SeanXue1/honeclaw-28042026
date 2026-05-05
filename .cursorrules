@@ -12,8 +12,11 @@ Step 2: Update Code
 - Execute: `git pull origin main`
 - Note: If conflicts occur, ask to run `git reset --hard HEAD`.
 
-Step 3: Clean & Rebuild Components
+Step 3: Clean & Rebuild All Core Components
 - Execute: `cargo clean`
+- Execute: `cargo build --release -p hone-cli`
+- Execute: `cargo build --release -p hone-console-page`
+- Execute: `cargo build --release -p hone-mcp`
 - Execute: `cargo build --release -p hone-imessage`
 - Execute: `cargo build --release -p hone-discord`
 - Execute: `cargo build --release -p hone-feishu`
