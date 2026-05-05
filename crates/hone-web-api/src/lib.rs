@@ -545,10 +545,7 @@ pub async fn start_server(
     }
 
     // ── 调度器 ─────────────────────────────────────────────────────
-    let mut scheduler_channels = vec!["web".to_string()];
-    if state.core.config.imessage.enabled {
-        scheduler_channels.insert(0, "imessage".to_string());
-    }
+    let scheduler_channels = vec![];
     let (scheduler, event_rx) = state.core.create_scheduler(scheduler_channels);
     task_handles.push(tokio::spawn(async move { scheduler.start().await }));
     let state_for_scheduler = state.clone();

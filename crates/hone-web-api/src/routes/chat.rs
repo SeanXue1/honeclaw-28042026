@@ -199,6 +199,8 @@ pub(crate) fn build_chat_sse(
                 .send(("run_finished".into(), json!({ "success": false })))
                 .await;
         }
+        let _ = tx.send(("done".into(), json!({}))).await;
+        tokio::time::sleep(std::time::Duration::from_millis(100)).await;
     });
 
     let stream = tokio_stream::wrappers::ReceiverStream::new(rx).map(|(event, data)| {

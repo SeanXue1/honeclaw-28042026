@@ -312,7 +312,7 @@ pub(crate) fn isolated_opencode_config(config: &OpencodeAcpConfig) -> String {
             "list": "allow",
             "glob": "allow",
             "grep": "allow",
-            "edit": "deny",
+            "edit": "allow",
             "bash": "deny",
             "webfetch": "deny",
             "websearch": "deny",
