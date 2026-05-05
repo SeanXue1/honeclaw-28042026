@@ -1,0 +1,34 @@
+# Custom Command Triggers
+- When I type "/full-rebuild", execute the [Full Deployment Pipeline] defined below.
+- if any error happens during the run, stop immediately and show me the error.
+
+# [Full Deployment Pipeline]
+Context: The project is in a WSL Safe Box (no /mnt). All paths are relative to ~/openclaw-project.
+
+Step 1: Stop & Cleanup
+- Execute: `./launch.sh stop`
+
+Step 2: Update Code
+- Execute: `git pull origin main`
+- Note: If conflicts occur, ask to run `git reset --hard HEAD`.
+
+Step 3: Clean & Rebuild Components
+- Execute: `cargo clean`
+- Execute: `cargo build --release -p hone-imessage`
+- Execute: `cargo build --release -p hone-discord`
+- Execute: `cargo build --release -p hone-feishu`
+- Execute: `cargo build --release -p hone-telegram`
+
+Step 4: Tauri Binary Prep
+- Execute: `mkdir -p bins/hone-desktop/binaries`
+- Copy and rename to target `x86_64-unknown-linux-gnu`:
+  - `cp target/release/hone-imessage bins/hone-desktop/binaries/hone-imessage-x86_64-unknown-linux-gnu`
+  - `cp target/release/hone-discord bins/hone-desktop/binaries/hone-discord-x86_64-unknown-linux-gnu`
+  - `cp target/release/hone-feishu bins/hone-desktop/binaries/hone-feishu-x86_64-unknown-linux-gnu`
+  - `cp target/release/hone-telegram bins/hone-desktop/binaries/hone-telegram-x86_64-unknown-linux-gnu`
+
+Step 5: System Verification & Launch
+- Execute: `./target/release/hone-cli doctor`
+
+Step 6: Finalize
+- Notify me that the system is built, verified, and the Web UI is now launching.

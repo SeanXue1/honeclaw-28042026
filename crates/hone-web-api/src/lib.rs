@@ -25,7 +25,7 @@ use hone_event_engine::{
     BodyPolisher, DiscordSink, FeishuSink, IMessageSink, LlmPolisher, LogSink, MultiChannelSink,
     OutboundSink, TelegramSink, parse_polish_levels,
 };
-use hone_llm::{LlmProvider, OpenRouterProvider};
+use hone_llm::{LlmProvider, OpenAiCompatibleProvider, OpenRouterProvider};
 use tokio::sync::broadcast;
 use tracing::info;
 use tracing_subscriber::prelude::*;
@@ -85,6 +85,60 @@ fn build_event_engine_news_classifier(
         Err(e) => {
             tracing::warn!(
                 "event engine: news LLM classifier 不可用,uncertain 源新闻将维持 Low: {e}"
+            );
+            None
+        }
+    }
+}
+
+/// Thesis 蒸馏专用 LLM：优先 `llm.auxiliary`（本地 Ollama / OpenAI-compatible），否则回退 OpenRouter。
+///
+/// - 与 global digest curator 解耦：digest 仍用 `global_digest_provider`（OpenRouter），
+///    thesis 可单独走辅助端点。
+/// - Ollama 常无 API key：`resolved_api_key` 为空时用占位 `ollama` 以满足客户端构造。
+pub(crate) fn build_thesis_distill_llm_provider(
+    core_cfg: &HoneConfig,
+) -> Option<Arc<dyn LlmProvider>> {
+    let aux = &core_cfg.llm.auxiliary;
+    let base = aux.base_url.trim();
+    let model = aux.model.trim();
+    if !base.is_empty() && !model.is_empty() {
+        let mut api_key = aux.resolved_api_key();
+        if api_key.is_empty() {
+            api_key = "ollama".to_string();
+        }
+        let max_tokens = core_cfg.llm.auxiliary.max_tokens.min(65535) as u16;
+        match OpenAiCompatibleProvider::new(
+            &api_key,
+            base,
+            model,
+            aux.timeout,
+            max_tokens,
+        ) {
+            Ok(p) => {
+                info!(
+                    base_url = %base,
+                    default_model = %model,
+                    "thesis distill: 使用 auxiliary OpenAI-compatible LLM（如 Ollama）"
+                );
+                return Some(Arc::new(p));
+            }
+            Err(e) => {
+                tracing::warn!(
+                    "thesis distill: auxiliary LLM 初始化失败,将尝试 OpenRouter: {e}"
+                );
+            }
+        }
+    }
+
+    match OpenRouterProvider::from_config(core_cfg) {
+        Ok(p) => {
+            info!("thesis distill: 使用 OpenRouter（未配置或未启用 auxiliary）");
+            Some(Arc::new(p))
+        }
+        Err(e) => {
+            tracing::warn!(
+                "thesis distill LLM 不可用（auxiliary 未就绪且 OpenRouter: {e}）, cron 不启动"
             );
             None
         }
@@ -404,7 +458,7 @@ pub async fn start_server(
         let polisher = build_event_engine_polisher(&state.core.config, &engine_cfg);
         let sink = build_event_engine_sink(&state.core.config);
         let news_classifier = build_event_engine_news_classifier(&state.core.config);
-        // global_digest 也走 OpenRouter,与 news_classifier 用同一 provider
+        // global_digest curator 走 OpenRouter（与 news_classifier 同源）；thesis 蒸馏单独走 auxiliary/Ollama，见 build_thesis_distill_llm_provider
         let global_digest_provider: Option<Arc<dyn LlmProvider>> =
             match OpenRouterProvider::from_config(&state.core.config) {
                 Ok(p) => Some(Arc::new(p)),
@@ -415,7 +469,9 @@ pub async fn start_server(
             };
 
         // ── Thesis 蒸馏 cron(每 7 天扫一次,独立 task,挂掉不影响 digest)──
-        if let Some(p) = global_digest_provider.clone() {
+        // LLM 优先 auxiliary（Ollama），与 global_digest 的 OpenRouter provider 独立。
+        let thesis_distill_llm = build_thesis_distill_llm_provider(&state.core.config);
+        if let Some(p) = thesis_distill_llm {
             let distill_model = state
                 .core
                 .config

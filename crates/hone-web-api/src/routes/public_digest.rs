@@ -167,16 +167,15 @@ pub(crate) async fn handle_refresh_digest_context(
         return json_error(StatusCode::BAD_REQUEST, "portfolio 持仓为空");
     }
 
-    let provider: Arc<dyn hone_llm::LlmProvider> =
-        match hone_llm::OpenRouterProvider::from_config(&state.core.config) {
-            Ok(p) => Arc::new(p),
-            Err(e) => {
-                return json_error(
-                    StatusCode::INTERNAL_SERVER_ERROR,
-                    format!("OpenRouter provider 不可用: {e}"),
-                );
-            }
-        };
+    let provider = match crate::build_thesis_distill_llm_provider(&state.core.config) {
+        Some(p) => p,
+        None => {
+            return json_error(
+                StatusCode::INTERNAL_SERVER_ERROR,
+                "thesis 蒸馏 LLM 不可用（请配置 llm.auxiliary 指向 Ollama，或配置可用的 llm.openrouter）",
+            );
+        }
+    };
     let model = state
         .core
         .config
