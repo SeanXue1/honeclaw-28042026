@@ -1425,7 +1425,9 @@ async fn run_success_commits_daily_conversation_quota() {
         tool_calls: None,
         usage: None,
     }]);
-    let core = make_test_core(&root, llm);
+    let core = make_test_core_with_config(&root, llm, |config| {
+        config.agent.daily_conversation_limit = 12;
+    });
     let actor = ActorIdentity::new("discord", "alice", None::<String>).expect("actor");
     let session = AgentSession::new(core.clone(), actor.clone(), actor.user_id.clone());
 
@@ -1458,7 +1460,9 @@ async fn run_rejects_over_daily_limit_without_persisting_user_message() {
         tool_calls: None,
         usage: None,
     }]);
-    let core = make_test_core(&root, llm.clone());
+    let core = make_test_core_with_config(&root, llm.clone(), |config| {
+        config.agent.daily_conversation_limit = 12;
+    });
     let actor = ActorIdentity::new("discord", "alice", None::<String>).expect("actor");
     let today = hone_core::beijing_now().format("%F").to_string();
     let daily_limit = core.config.agent.daily_conversation_limit;
@@ -1814,12 +1818,14 @@ async fn auto_compact_summary_excludes_latest_user_turn_from_prompt() {
 async fn scheduled_task_mode_skips_daily_quota() {
     let root = make_temp_dir("hone_channels_quota_scheduled");
     std::fs::create_dir_all(&root).expect("create root");
-    let llm = MockLlmProvider::with_tool_responses(vec![ChatResponse {
-        content: "scheduled ok".to_string(),
-        tool_calls: None,
-        usage: None,
+    let llm = MockLlmProvider::with_tool_responses(vec![ChatResponse { 
+        content: "scheduled ok".to_string(), 
+        tool_calls: None, 
+        usage: None, 
     }]);
-    let core = make_test_core(&root, llm);
+    let core = make_test_core_with_config(&root, llm, |config| {
+        config.agent.daily_conversation_limit = 12;
+    });
     let actor = ActorIdentity::new("discord", "alice", None::<String>).expect("actor");
     let today = hone_core::beijing_now().format("%F").to_string();
     let daily_limit = core.config.agent.daily_conversation_limit;

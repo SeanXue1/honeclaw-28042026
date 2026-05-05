@@ -569,7 +569,7 @@ fn default_max_iterations() -> u32 {
 }
 
 fn default_daily_conversation_limit() -> u32 {
-    12
+    0
 }
 
 fn default_agent_step_timeout_seconds() -> u64 {
@@ -614,8 +614,8 @@ mod tests {
     }
 
     #[test]
-    fn agent_default_daily_conversation_limit_is_twelve() {
-        assert_eq!(super::AgentConfig::default().daily_conversation_limit, 12);
+    fn agent_default_daily_conversation_limit_is_zero_unlimited() {
+        assert_eq!(super::AgentConfig::default().daily_conversation_limit, 0);
     }
 
     #[test]

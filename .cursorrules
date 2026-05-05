@@ -31,4 +31,4 @@ Step 5: System Verification & Launch
 - Execute: `./target/release/hone-cli doctor`
 
 Step 6: Finalize
-- Notify me that the system is built, verified, and the Web UI is now launching.
+- Notify me that the system is built, verified
